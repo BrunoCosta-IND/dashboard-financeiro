@@ -1,0 +1,432 @@
+{
+  "name": "Dashboard Financeiro - WhatsApp Integration",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "7d0e8b67-8a9e-4b72-b3c1-2f4e6d8a9c1b",
+      "name": "WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "credentials": {},
+      "webhookId": "whatsapp-financial-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.type }}",
+              "operation": "equal",
+              "value2": "text"
+            }
+          ]
+        }
+      },
+      "id": "1a2b3c4d-5e6f-7890-abcd-ef1234567890",
+      "name": "Is Text Message",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        450,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.type }}",
+              "operation": "equal",
+              "value2": "image"
+            }
+          ]
+        }
+      },
+      "id": "2b3c4d5e-6f78-90ab-cdef-123456789012",
+      "name": "Is Image Message",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        450,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.message.type }}",
+              "operation": "equal",
+              "value2": "audio"
+            }
+          ]
+        }
+      },
+      "id": "3c4d5e6f-7890-abcd-ef12-34567890abcd",
+      "name": "Is Audio Message",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        450,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Processa mensagens de texto\nconst message = $input.first().json.message;\nconst contact = $input.first().json.contact;\n\n// Extrair informações relevantes\nconst content = message.body || '';\nconst phoneNumber = contact.number || contact.id;\nconst timestamp = message.timestamp || Date.now();\nconst messageId = message.id;\n\n// Preparar dados para o webhook do dashboard\nconst webhookData = {\n  messageType: 'text',\n  content: content,\n  phoneNumber: phoneNumber,\n  timestamp: timestamp,\n  messageId: messageId,\n  originalMessage: content\n};\n\nreturn { json: webhookData };"
+      },
+      "id": "4d5e6f78-90ab-cdef-1234-567890abcdef",
+      "name": "Process Text Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        650,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Processa mensagens de imagem\nconst message = $input.first().json.message;\nconst contact = $input.first().json.contact;\n\n// Extrair URL da imagem\nconst mediaUrl = message.media_url || message.url;\nconst caption = message.caption || '';\nconst phoneNumber = contact.number || contact.id;\nconst timestamp = message.timestamp || Date.now();\nconst messageId = message.id;\n\n// Para imagens, vamos simular OCR - em produção usaria Google Vision, Tesseract, etc.\n// Por enquanto, vamos usar a caption se disponível\nlet extractedText = caption;\n\n// Se não há caption, simular extração OCR\nif (!extractedText && mediaUrl) {\n  // Aqui seria integrado com serviço de OCR\n  extractedText = 'Texto extraído da imagem via OCR';\n}\n\nconst webhookData = {\n  messageType: 'image',\n  content: extractedText,\n  phoneNumber: phoneNumber,\n  timestamp: timestamp,\n  messageId: messageId,\n  mediaUrl: mediaUrl,\n  originalMessage: caption\n};\n\nreturn { json: webhookData };"
+      },
+      "id": "5e6f7890-abcd-ef12-3456-7890abcdef12",
+      "name": "Process Image Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        650,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Processa mensagens de áudio\nconst message = $input.first().json.message;\nconst contact = $input.first().json.contact;\n\n// Extrair URL do áudio\nconst mediaUrl = message.media_url || message.url;\nconst phoneNumber = contact.number || contact.id;\nconst timestamp = message.timestamp || Date.now();\nconst messageId = message.id;\n\n// Para áudios, seria integrado com serviço de transcrição (Whisper, Google Speech-to-Text)\n// Por enquanto, vamos simular\nlet transcribedText = 'Texto transcrito do áudio';\n\n// Simulação de transcrição baseada no contexto\nif (mediaUrl) {\n  // Aqui seria integrado com serviço de transcrição\n  transcribedText = 'Gastei 45 reais no restaurante hoje';\n}\n\nconst webhookData = {\n  messageType: 'audio',\n  content: transcribedText,\n  phoneNumber: phoneNumber,\n  timestamp: timestamp,\n  messageId: messageId,\n  mediaUrl: mediaUrl,\n  originalMessage: 'Mensagem de áudio'\n};\n\nreturn { json: webhookData };"
+      },
+      "id": "6f789012-3456-7890-abcd-ef1234567890",
+      "name": "Process Audio Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        650,
+        550
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:3000/api/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "7890abcd-ef12-3456-7890-abcdef123456",
+      "name": "Send to Dashboard API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        850,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.statusCode }}",
+              "operation": "equal",
+              "value2": 200
+            }
+          ]
+        }
+      },
+      "id": "890abcde-f123-4567-890a-bcdef1234567",
+      "name": "API Response Check",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.whatsapp.com/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.WHATSAPP_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "jsonBody": "{\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $node['Process Text Message'].json.phoneNumber || $node['Process Image Message'].json.phoneNumber || $node['Process Audio Message'].json.phoneNumber }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"✅ Gasto registrado com sucesso! {{ $json.data.expense.description }} - R$ {{ $json.data.expense.amount }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "90abcdef-1234-5678-90ab-cdef12345678",
+      "name": "Send Success Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1250,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.whatsapp.com/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.WHATSAPP_API_TOKEN }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "jsonBody": "{\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $node['Process Text Message'].json.phoneNumber || $node['Process Image Message'].json.phoneNumber || $node['Process Audio Message'].json.phoneNumber }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"❌ Não consegui identificar um gasto válido na sua mensagem. Tente novamente ou digite o valor manualmente.\"\n  }\n}",
+        "options": {}
+      },
+      "id": "0abcdef1-2345-6789-0abc-def123456789",
+      "name": "Send Error Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1250,
+        450
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"success\": true,\n  \"message\": \"Mensagem processada com sucesso\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}"
+      },
+      "id": "abcdef12-3456-789a-bcde-f123456789ab",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1450,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log de auditoria para monitoramento\nconst logData = {\n  timestamp: new Date().toISOString(),\n  phoneNumber: $json.phoneNumber,\n  messageType: $json.messageType,\n  processed: true,\n  confidence: $json.data?.confidence || 0,\n  amount: $json.data?.expense?.amount || 0,\n  category: $json.data?.expense?.category || 'unknown'\n};\n\nconsole.log('Financial Log:', JSON.stringify(logData, null, 2));\n\nreturn { json: logData };"
+      },
+      "id": "bcdef123-4567-89ab-cdef-123456789abc",
+      "name": "Audit Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1050,
+        550
+      ]
+    }
+  ],
+  "connections": {
+    "WhatsApp Webhook": {
+      "main": [
+        [
+          {
+            "node": "Is Text Message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Image Message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Audio Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Text Message": {
+      "main": [
+        [
+          {
+            "node": "Process Text Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Image Message": {
+      "main": [
+        [
+          {
+            "node": "Process Image Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Audio Message": {
+      "main": [
+        [
+          {
+            "node": "Process Audio Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Text Message": {
+      "main": [
+        [
+          {
+            "node": "Send to Dashboard API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Image Message": {
+      "main": [
+        [
+          {
+            "node": "Send to Dashboard API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Audio Message": {
+      "main": [
+        [
+          {
+            "node": "Send to Dashboard API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Dashboard API": {
+      "main": [
+        [
+          {
+            "node": "API Response Check",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Audit Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Response Check": {
+      "main": [
+        [
+          {
+            "node": "Send Success Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Error Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Success Message": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Error Message": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "createdAt": "2025-01-24T15:00:00.000Z",
+  "updatedAt": "2025-01-24T15:00:00.000Z",
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateId": "dashboard-financeiro-whatsapp-v1"
+  },
+  "pinData": {},
+  "versionId": "1.0.0",
+  "tags": [
+    {
+      "id": "finance",
+      "name": "Finance"
+    },
+    {
+      "id": "whatsapp",
+      "name": "WhatsApp"
+    },
+    {
+      "id": "automation",
+      "name": "Automation"
+    }
+  ]
+} 
